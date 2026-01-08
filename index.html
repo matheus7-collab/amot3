@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AMOT - Gestão de Estoque Pro</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --red: #d32f2f; --bg: #f4f7f6; --text: #2d3436; }
+        body { font-family: 'Poppins', sans-serif; background: var(--bg); margin: 0; padding: 15px; display: flex; justify-content: center; }
+        .container { width: 100%; max-width: 450px; }
+        .header { text-align: center; margin-bottom: 15px; background: white; padding: 20px; border-radius: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        .header img { max-width: 150px; margin-bottom: 15px; }
+        .card { background: white; padding: 25px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); border-top: 6px solid var(--red); }
+        label { font-size: 11px; font-weight: 700; color: #636e72; text-transform: uppercase; display: block; margin-top: 12px; }
+        select, input { width: 100%; padding: 14px; margin-top: 5px; border: 2px solid #edf2f7; border-radius: 12px; box-sizing: border-box; font-size: 16px; font-family: 'Poppins', sans-serif; }
+        .btn-dr { background: var(--red); color: white; border: none; padding: 18px; border-radius: 15px; width: 100%; font-weight: 700; cursor: pointer; text-transform: uppercase; margin-bottom: 15px; }
+        .btn-group { display: grid; gap: 10px; margin-top: 20px; }
+        .btn { padding: 16px; border: none; border-radius: 12px; color: white; font-weight: 700; cursor: pointer; text-transform: uppercase; font-size: 13px; }
+        .btn-in { background: #2e7d32; }
+        .btn-transf { background: #0284c7; }
+        .btn-out { background: var(--text); }
+        .btn-del { background: #dfe6e9; color: #636e72; font-size: 10px; margin-top: 10px; }
+        #status { display: none; text-align: center; padding: 12px; border-radius: 12px; margin-bottom: 15px; font-weight: 600; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <img src="https://amot.med.br/wp-content/uploads/elementor/thumbs/logo_vermelho-r6wu9t2wzlirgks8pjxghgrk8ppx6bwdlx0j0fqt9m.png">
+        <button class="btn-dr" onclick="window.open('https://docs.google.com/spreadsheets/d/15AlRwKtNSiSe_8qwghAKOPGDbGMMY5fBo9sqpWq4YEc/edit?gid=1619294782#gid=1619294782')">📊 Ver Painel de Lotes</button>
+    </div>
+
+    <div id="status"></div>
+
+    <div class="card">
+        <label>Data do Movimento</label>
+        <input type="date" id="data_manual">
+
+        <label>Escolha o Medicamento</label>
+        <select id="med">
+            <option value="">Selecione...</option>
+            <optgroup label="💉 INJEÇÃO">
+                <option value="DUOFLAN">DUOFLAN</option>
+                <option value="MELOXICAN">MELOXICAN</option>
+                <option value="DIPROSPAN">DIPROSNPAN</option>
+                <option value="XYLESTESIN">XYLESTESIN</option>
+            </optgroup>
+            <optgroup label="🧪 INFILTRAÇÃO">
+                <option value="SYNOLIS VA">SYNOLIS VA</option>
+                <option value="KD 1.0">KD 1.0</option>
+                <option value="KD 2.2">KD 2.2</option>
+            </optgroup>
+        </select>
+
+        <label>Número do Lote</label>
+        <input type="text" id="lote" placeholder="Ex: LOT-2026-01">
+
+        <label>Quantidade</label>
+        <input type="number" id="qtd" placeholder="0" inputmode="numeric">
+
+        <label>Paciente / Observação</label>
+        <input type="text" id="det" placeholder="Nome do paciente">
+
+        <div class="btn-group">
+            <button class="btn btn-in" onclick="lancar('ENTRADA')">✚ Receber no Estoque</button>
+            <button class="btn btn-transf" onclick="lancar('TRANSFERIR')">➜ Enviar para Sala</button>
+            <button class="btn btn-out" onclick="lancar('USO_PACIENTE')">✔ Registrar Aplicação</button>
+            <button class="btn btn-del" onclick="cancelarUltimo()">⚠ Errei! Apagar última linha</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Configura a data de hoje como padrão ao abrir o site
+    document.getElementById('data_manual').valueAsDate = new Date();
+
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby_PZydOwBU0-1-RkcPg4lMMb1y3nTeOs-yc2AKGL4VOfCcV3Tt46QBEx1MbJE3TBwW/exec';
+
+    async function lancar(mov) {
+        const select = document.getElementById('med');
+        const med = select.value;
+        const optgroup = select.options[select.selectedIndex].parentNode;
+        const cat = optgroup.tagName === 'OPTGROUP' ? optgroup.label : "GERAL";
+        
+        const qtd = document.getElementById('qtd').value;
+        const lote = document.getElementById('lote').value;
+        const det = document.getElementById('det').value;
+        
+        // Pega a data selecionada no calendário
+        const dataInput = document.getElementById('data_manual').value;
+        const dataFormatada = dataInput.split('-').reverse().join('/'); // Converte de YYYY-MM-DD para DD/MM/YYYY
+
+        const status = document.getElementById('status');
+
+        if(!med || !qtd || !lote || !dataInput) {
+            alert("⚠️ Preencha Data, Medicamento, Quantidade e Lote!");
+            return;
+        }
+
+        status.style.display = 'block';
+        status.innerHTML = "⏳ Enviando...";
+        status.style.background = "#fff3cd";
+
+        const payload = { 
+            data: dataFormatada, 
+            med: med, cat: cat, mov: mov, 
+            qtd: parseInt(qtd), lote: lote, det: det 
+        };
+
+        try {
+            await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(payload) });
+            status.innerHTML = "✅ Salvo com sucesso!";
+            status.style.background = "#d4edda";
+            document.getElementById('qtd').value = "";
+            document.getElementById('lote').value = "";
+            document.getElementById('det').value = "";
+            setTimeout(() => { status.style.display = 'none'; }, 3000);
+        } catch (e) {
+            status.innerHTML = "❌ Erro ao salvar!";
+            status.style.background = "#f8d7da";
+        }
+    }
+
+    async function cancelarUltimo() {
+        if(!confirm("Deseja apagar a ÚLTIMA linha lançada na planilha?")) return;
+        const status = document.getElementById('status');
+        status.style.display = 'block';
+        status.innerHTML = "🗑️ Removendo...";
+        try {
+            await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: "DELETE_LAST" }) });
+            status.innerHTML = "🗑️ Registro apagado!";
+            status.style.background = "#d4edda";
+            setTimeout(() => { status.style.display = 'none'; }, 3000);
+        } catch (e) {
+            status.innerHTML = "❌ Erro!";
+        }
+    }
+</script>
+</body>
+</html>
